@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import io
@@ -15,12 +14,12 @@ uploaded_files = st.file_uploader(
 if uploaded_files:
     dfs = []
     all_columns = []
-
-def update_columns(new_cols):
-    for col in new_cols:
-        if col not in all_columns:
-            all_columns.append(col)
     errors = []
+
+    def update_columns(new_cols):
+        for col in new_cols:
+            if col not in all_columns:
+                all_columns.append(col)
 
     def safe_read(file):
         try:
@@ -34,7 +33,7 @@ def update_columns(new_cols):
         except Exception as e:
             raise ValueError(f"{file.name} is unreadable: {e}")
 
-    # Step 1: Discover all columns
+    # Step 1: Collect all unique columns in order
     for file in uploaded_files:
         try:
             df = safe_read(file)
@@ -45,7 +44,7 @@ def update_columns(new_cols):
         except Exception as e:
             errors.append(f"❌ Failed reading {file.name}: {e}")
 
-    # Step 2: Align and merge
+    # Step 2: Align columns and append to master dataframe
     for file in uploaded_files:
         try:
             df = safe_read(file)
@@ -56,7 +55,7 @@ def update_columns(new_cols):
         except Exception as e:
             errors.append(f"❌ Skipped {file.name} due to error: {e}")
 
-   if dfs:
+    if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
         st.success("✅ Files combined successfully!")
         st.write(combined_df)
@@ -71,9 +70,10 @@ def update_columns(new_cols):
     else:
         st.error("No valid files to merge.")
 
- if errors:
+    if errors:
         st.warning("Some files could not be processed:")
         for err in errors:
             st.text(err)
 else:
     st.info("⬆️ Upload at least one file to begin.")
+
