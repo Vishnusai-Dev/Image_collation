@@ -13,48 +13,41 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     dfs = []
-    all_columns = []
+    column_names = None
     errors = []
 
-    def update_columns(new_cols):
-        for col in new_cols:
-            if col not in all_columns:
-                all_columns.append(col)
+    def normalize_csv(file):
+        raw = file.read()
+        decoded = raw.decode("utf-8-sig", errors="ignore").replace("\r", "\n")
+        file.seek(0)
+        return decoded
 
-    def safe_read(file):
+    for i, file in enumerate(uploaded_files):
         try:
             if file.name.endswith(".csv"):
-                raw = file.read()
-                decoded = raw.decode("utf-8", errors="ignore").replace("\r", "\n")
-                file.seek(0)
-                return pd.read_csv(io.StringIO(decoded), header=0)
+                decoded = normalize_csv(file)
+                if i == 0:
+                    df = pd.read_csv(io.StringIO(decoded), header=0)
+                    column_names = df.columns.tolist()
+                    st.write(f"✅ `{file.name}` columns detected:", column_names)
+                else:
+                    df = pd.read_csv(io.StringIO(decoded), names=column_names, skiprows=1)
             elif file.name.endswith(".xlsx"):
-                return pd.read_excel(file, header=0)
-        except Exception as e:
-            raise ValueError(f"{file.name} is unreadable: {e}")
+                if i == 0:
+                    df = pd.read_excel(file, header=0)
+                    column_names = df.columns.tolist()
+                    st.write(f"✅ `{file.name}` columns detected:", column_names)
+                else:
+                    df = pd.read_excel(file, names=column_names, skiprows=1)
 
-    # Step 1: Collect all columns in correct order
-    for file in uploaded_files:
-        try:
-            df = safe_read(file)
-            st.write(f"📄 `{file.name}` columns:", df.columns.tolist())  # Debug line
             if df.empty:
                 errors.append(f"{file.name} is empty. Skipping.")
                 continue
-            update_columns(df.columns)
-        except Exception as e:
-            errors.append(f"❌ Failed reading {file.name}: {e}")
 
-    # Step 2: Align columns and combine
-    for file in uploaded_files:
-        try:
-            df = safe_read(file)
-            if df.empty:
-                continue
-            df = df.reindex(columns=all_columns)
             dfs.append(df)
+
         except Exception as e:
-            errors.append(f"❌ Skipped {file.name} due to error: {e}")
+            errors.append(f"❌ Error reading {file.name}: {e}")
 
     if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
