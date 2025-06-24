@@ -1,64 +1,45 @@
 import streamlit as st
 import pandas as pd
 import io
-from io import BytesIO
+import zipfile
 
-st.set_page_config(page_title="CSV Merger", layout="centered")
-st.title("📁 Combine Multiple CSV Files with Matching Headers")
+st.set_page_config(page_title="CSV Merger", layout="wide")
+st.title("📁 Merge Multiple CSV Files with Varying Headers")
 
 uploaded_files = st.file_uploader(
-    "Upload CSV files", type=["csv"], accept_multiple_files=True
+    "Upload multiple CSV files", type="csv", accept_multiple_files=True
 )
 
 if uploaded_files:
-    dfs = []
-    column_names = None
-    errors = []
+    all_dfs = []
+    all_columns = set()
 
-    def read_csv_with_forced_header(file, header=None):
-        raw = file.read()
-        text = raw.decode("utf-8-sig", errors="ignore").replace("\r", "\n")
-        file.seek(0)
-        df = pd.read_csv(io.StringIO(text), header=None)
-        if header:
-            df.columns = header
-            df = df[1:]  # Drop the row that was originally a header
-        return df
+    # Read all files and collect headers
+    for file in uploaded_files:
+        df = pd.read_csv(file)
+        all_dfs.append(df)
+        all_columns.update(df.columns)
 
-    for i, file in enumerate(uploaded_files):
-        try:
-            if i == 0:
-                raw = file.read()
-                text = raw.decode("utf-8-sig", errors="ignore").replace("\r", "\n")
-                file.seek(0)
-                preview = pd.read_csv(io.StringIO(text), header=None)
-                column_names = preview.iloc[0].tolist()
-                df = preview[1:].copy()
-                df.columns = column_names
-            else:
-                df = read_csv_with_forced_header(file, column_names)
-            dfs.append(df)
-        except Exception as e:
-            errors.append(f"❌ Error reading {file.name}: {e}")
+    # Rebuild all DataFrames to have all headers
+    all_columns = sorted(all_columns)
+    merged_df = pd.DataFrame(columns=all_columns)
 
-    if dfs:
-        combined_df = pd.concat(dfs, ignore_index=True)
-        st.success("✅ Files combined successfully!")
-        st.write(combined_df)
+    for df in all_dfs:
+        df_reindexed = df.reindex(columns=all_columns, fill_value="")
+        merged_df = pd.concat([merged_df, df_reindexed], ignore_index=True)
 
-        def convert_df(df):
-            output = BytesIO()
-            df.to_csv(output, index=False)
-            return output.getvalue()
+    st.success(f"✅ Merged {len(uploaded_files)} files successfully!")
+    st.dataframe(merged_df.head(100), use_container_width=True)
 
-        csv_data = convert_df(combined_df)
-        st.download_button("📥 Download Combined File", csv_data, "combined_output.csv", "text/csv")
-    else:
-        st.error("No valid files to merge.")
-
-    if errors:
-        st.warning("Some files could not be processed:")
-        for err in errors:
-            st.text(err)
+    # Provide download button
+    csv_buffer = io.StringIO()
+    merged_df.to_csv(csv_buffer, index=False)
+    st.download_button(
+        label="📥 Download Merged CSV",
+        data=csv_buffer.getvalue(),
+        file_name="merged_output.csv",
+        mime="text/csv"
+    )
 else:
-    st.info("⬆️ Upload at least one file to begin.")
+    st.info("Upload at least 2 CSV files to begin merging.")
+
