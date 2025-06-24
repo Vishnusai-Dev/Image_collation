@@ -14,7 +14,12 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     dfs = []
-    all_columns = set()
+    all_columns = []
+
+def update_columns(new_cols):
+    for col in new_cols:
+        if col not in all_columns:
+            all_columns.append(col)
     errors = []
 
     def safe_read(file):
@@ -36,7 +41,7 @@ if uploaded_files:
             if df.empty:
                 errors.append(f"{file.name} is empty. Skipping.")
                 continue
-            all_columns.update(df.columns)
+            update_columns(df.columns)
         except Exception as e:
             errors.append(f"❌ Failed reading {file.name}: {e}")
 
