@@ -27,16 +27,17 @@ if uploaded_files:
                 raw = file.read()
                 decoded = raw.decode("utf-8", errors="ignore").replace("\r", "\n")
                 file.seek(0)
-                return pd.read_csv(io.StringIO(decoded))
+                return pd.read_csv(io.StringIO(decoded), header=0)
             elif file.name.endswith(".xlsx"):
-                return pd.read_excel(file)
+                return pd.read_excel(file, header=0)
         except Exception as e:
             raise ValueError(f"{file.name} is unreadable: {e}")
 
-    # Step 1: Collect all unique columns in order
+    # Step 1: Collect all columns in correct order
     for file in uploaded_files:
         try:
             df = safe_read(file)
+            st.write(f"📄 `{file.name}` columns:", df.columns.tolist())  # Debug line
             if df.empty:
                 errors.append(f"{file.name} is empty. Skipping.")
                 continue
@@ -44,7 +45,7 @@ if uploaded_files:
         except Exception as e:
             errors.append(f"❌ Failed reading {file.name}: {e}")
 
-    # Step 2: Align columns and append to master dataframe
+    # Step 2: Align columns and combine
     for file in uploaded_files:
         try:
             df = safe_read(file)
@@ -76,4 +77,3 @@ if uploaded_files:
             st.text(err)
 else:
     st.info("⬆️ Upload at least one file to begin.")
-
