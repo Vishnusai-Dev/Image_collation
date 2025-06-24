@@ -1,30 +1,38 @@
+
 import streamlit as st
 import pandas as pd
+import io
 from io import BytesIO
 
 st.set_page_config(page_title="CSV & Excel Merger", layout="centered")
 
 st.title("📁 Combine Multiple CSV or Excel Files")
 
-# 1. File Uploader FIRST
 uploaded_files = st.file_uploader(
     "Upload CSV or Excel files", type=["csv", "xlsx"], accept_multiple_files=True
 )
 
-if uploaded_files:  # Check if any files were uploaded
+if uploaded_files:
     dfs = []
     all_columns = set()
     errors = []
 
-    # Step 1: Collect all columns
-    for file in uploaded_files:
+    def safe_read(file):
         try:
             if file.name.endswith(".csv"):
-                df = pd.read_csv(file)
+                raw = file.read()
+                decoded = raw.decode("utf-8", errors="ignore").replace("\r", "\n")
+                file.seek(0)
+                return pd.read_csv(io.StringIO(decoded))
             elif file.name.endswith(".xlsx"):
-                df = pd.read_excel(file)
-            else:
-                continue
+                return pd.read_excel(file)
+        except Exception as e:
+            raise ValueError(f"{file.name} is unreadable: {e}")
+
+    # Step 1: Discover all columns
+    for file in uploaded_files:
+        try:
+            df = safe_read(file)
             if df.empty:
                 errors.append(f"{file.name} is empty. Skipping.")
                 continue
@@ -32,15 +40,10 @@ if uploaded_files:  # Check if any files were uploaded
         except Exception as e:
             errors.append(f"❌ Failed reading {file.name}: {e}")
 
-    # Step 2: Align columns and append
+    # Step 2: Align and merge
     for file in uploaded_files:
         try:
-            if file.name.endswith(".csv"):
-                df = pd.read_csv(file)
-            elif file.name.endswith(".xlsx"):
-                df = pd.read_excel(file)
-            else:
-                continue
+            df = safe_read(file)
             if df.empty:
                 continue
             df = df.reindex(columns=all_columns)
@@ -48,7 +51,6 @@ if uploaded_files:  # Check if any files were uploaded
         except Exception as e:
             errors.append(f"❌ Skipped {file.name} due to error: {e}")
 
-    # Step 3: Combine and show results
     if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
         st.success("✅ Files combined successfully!")
@@ -64,7 +66,6 @@ if uploaded_files:  # Check if any files were uploaded
     else:
         st.error("No valid files to merge.")
 
-    # Step 4: Show errors if any
     if errors:
         st.warning("Some files could not be processed:")
         for err in errors:

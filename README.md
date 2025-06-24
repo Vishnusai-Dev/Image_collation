@@ -1,22 +1,18 @@
 
-# CSV & Excel Merger - Streamlit App
+# CSV & Excel Merger (Streamlit)
 
-This Streamlit app allows users to upload and combine multiple CSV or Excel files into a single file, aligning data under common headers.
+A Streamlit app to combine multiple `.csv` or `.xlsx` files into one, aligning all headers and skipping empty/corrupt files.
 
 ## Features
+- Upload and combine multiple CSV or Excel files
+- Handles non-standard line breaks and encodings
+- Gracefully skips files without data
 
-- Upload `.csv` and `.xlsx` files
-- Combine and align all data under matching headers
-- Fill missing columns with blanks
-- Download merged file as a CSV
-
-## Run Locally
-
+## Run locally
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Author
-
-Built by Vishnu Sai with 💡 powered by ChatGPT
+## License
+MIT
