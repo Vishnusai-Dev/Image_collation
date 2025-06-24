@@ -56,7 +56,7 @@ def update_columns(new_cols):
         except Exception as e:
             errors.append(f"❌ Skipped {file.name} due to error: {e}")
 
-    if dfs:
+   if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
         st.success("✅ Files combined successfully!")
         st.write(combined_df)
@@ -71,7 +71,7 @@ def update_columns(new_cols):
     else:
         st.error("No valid files to merge.")
 
-    if errors:
+ if errors:
         st.warning("Some files could not be processed:")
         for err in errors:
             st.text(err)
